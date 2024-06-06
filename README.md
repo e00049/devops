@@ -1,0 +1,1 @@
+django as microservice env

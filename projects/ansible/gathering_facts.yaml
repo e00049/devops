@@ -1,0 +1,8 @@
+---
+- name: Gather facts and display them
+  hosts: devops_machines
+  gather_facts: yes
+  tasks:
+    - name: Display gathered facts
+      debug:
+        var: ansible_facts

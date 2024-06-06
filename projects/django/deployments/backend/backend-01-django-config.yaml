@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myapp-config
+  namespace: dev  
+data:
+  BACKEND_SERVER: mysql-service.database.svc.cluster.local
+  DB_HOST: mysql-service.database.svc.cluster.local
+  DB_PORT: "3306"
+  MYSQL_DATABASE: jobportal
+  MYSQL_USER: e00049  
+   

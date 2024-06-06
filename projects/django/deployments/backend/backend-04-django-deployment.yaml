@@ -1,0 +1,74 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: django-deployment
+  name: django-deployment
+  namespace: dev
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-deployment
+  template:
+    metadata:
+      labels:
+        app: django-deployment
+    spec:
+      initContainers:
+      - name: init-delay
+        image: busybox
+        command: ["sleep", "5"]
+      containers:
+      - image: e00049/django:latest
+        name: django
+        env:
+        - name: BACKEND_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: myapp-config
+              key: BACKEND_SERVER
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: myapp-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: myapp-config
+              key: MYSQL_USER
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: myapp-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: myapp-config
+              key: DB_PORT
+        envFrom:
+        - secretRef:
+            name: myapp-secret
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/v1/healthz
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/v1/healthz
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 40
+          

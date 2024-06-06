@@ -1,0 +1,7 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mysql-storage-class
+provisioner: kubernetes.io/gce-pd # Change this to match your storage provisioner
+parameters:
+  type: pd-standard # Change this to match your storage type

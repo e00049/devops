@@ -1,0 +1,100 @@
+def readProb;
+pipeline {
+    agent any
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('e00049-dockerhub-django')
+        GCLOUD_CREDENTIALS = credentials('gcloud-service-account')        
+    }
+    stages {
+        stage('SCM_Checkout_For_Django') { 
+            steps {
+                checkout scmGit(branches: [[name: '*/dev']], extensions: [], userRemoteConfigs: [[credentialsId: 'e00049-gitlab-django', url: 'http://34.30.194.3/e00049/devops.git']])
+            }
+        }
+        stage('DockerHub_Authentication') {
+            steps {
+                script {
+                     // Jenkins-Plugin - Pipeline Utility Steps
+                    readProb = readProperties  file:'config.properties'
+                    Docker_Hub_Auth= "${readProb['Docker_Hub_Auth']}"
+                    if ("$Docker_Hub_Auth" == "yes") {
+                        sh ''' sudo echo $DOCKERHUB_CREDENTIALS_PSW | sudo docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin '''
+                    } else {
+                        echo "DockerHub_Authentication_Skipped"
+                    }
+                }            
+            }
+        }    
+        stage('Docker_Build_and_Push') {
+            steps {
+                script {
+                    readProb = readProperties  file:'config.properties'
+                    Docker_Build_Push= "${readProb['Docker_Build_Push']}"
+                    if ("$Docker_Build_Push" == "yes") {
+                        sh ''' 
+                            sudo docker rmi e00049/django:latest || true
+                            sudo docker build -t e00049/django:latest -f Dockerfile.django .           
+                            sudo docker tag e00049/django:latest e00049/django:$BUILD_NUMBER 
+                            sudo docker push e00049/django:$BUILD_NUMBER                              
+                            sudo docker rmi e00049/django:$BUILD_NUMBER              
+                            '''
+                    } else {
+                        echo "Docker_Build_and_Push_Skipped"
+                    }
+                }            
+            }
+        }
+        stage('Google Cloud Authentication') {
+            steps {
+                script {
+                    readProb = readProperties  file:'config.properties'
+                    GCloud_Auth= "${readProb['GCloud_Auth']}"
+                    
+                    if (GCloud_Auth == 'yes') {
+                        // withCredentials script generator of Jenkins
+                        withCredentials([file(credentialsId: 'gcloud-service-account', variable: 'GCLOUD_CREDENTIALS_FILE')]) {
+                            sh ''' gcloud auth activate-service-account --key-file="$GCLOUD_CREDENTIALS_FILE" 
+                                   gcloud container clusters get-credentials cluster-1 --zone us-central1-c --project e00049-project-workspace                                   
+                            '''
+                        }
+                    } else {
+                        echo "Google Cloud Authentication Skipped"
+                    }
+                }
+            }
+        }
+        stage('Fresh_Deployment_Kubernetes_Django') {
+            steps {
+                script {
+                    readProb = readProperties  file:'config.properties'
+                    Fresh_Deploy_Django= "${readProb['Fresh_Deploy_Django']}"
+                    
+                    if (Fresh_Deploy_Django == 'yes') {
+                        sh '''
+                            sed -i s/latest/$BUILD_NUMBER/g deployments/backend/backend-04-django-deployment.yaml
+                            kubectl apply -f deployments/namespace/01-backend-ns.yml
+                            kubectl apply -f deployments/backend/
+                        '''
+                    } else {
+                        echo "Fresh-Deployment-Skipped"
+                    }
+                }
+            }
+        }
+        stage('Update_Deployment_Kubernetes_Django') {
+            steps {
+                script {
+                    readProb = readProperties  file:'config.properties'
+                    Update_Deploy_Django= "${readProb['Update_Deploy_Django']}"
+                    
+                    if (Update_Deploy_Django == 'yes') {
+                        sh ''' kubectl -n dev set image deployment/django-deployment django=e00049/django:$BUILD_NUMBER '''
+                    } else {
+                        echo "Update-Deployment-Skipped"
+                    }
+                }
+            }
+        }        
+    }
+}
+

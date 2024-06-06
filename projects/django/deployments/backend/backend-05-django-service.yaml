@@ -1,0 +1,33 @@
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   labels:
+#     app: django-deployment
+#   name: django-service
+#   namespace: dev
+# spec:
+#   ports:
+#   - port: 8000  
+#     protocol: TCP
+#     targetPort: 8000
+#     nodePort: 30000  
+#   selector:
+#     app: django-deployment
+#   type: NodePort
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: django-deployment
+  name: django-service
+  namespace: dev
+spec:
+  ports:
+  - port: 8000  
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: django-deployment
+  type: LoadBalancer
